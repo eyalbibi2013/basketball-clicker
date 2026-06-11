@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+<meta charset="UTF-8">
+<title>🏀 Basketball Clicker</title>
+
+<style>
+body {
+  margin:0;
+  font-family:Arial,sans-serif;
+  display:flex;
+  background:#b8734a;
+}
+
+#shop {
+  width:300px;
+  background:#f3f3f3;
+  padding:10px;
+  border-right:3px solid #000;
+}
+
+.item {
+  border:2px solid #000;
+  padding:8px;
+  margin-bottom:10px;
+  background:#fff;
+}
+
+.item button {
+  margin-top:5px;
+  width:100%;
+  cursor:pointer;
+}
+
+.player-img {
+  width:30px;
+  height:auto;
+  vertical-align:middle;
+  margin-left:6px;
+}
+
+.lebron-line {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.lebron-line img {
+  width:28px;
+  height:auto;
+}
+
+* { user-select:none; }
+
+#game {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  text-align:center;
+}
+
+#counter {
+  position:absolute;
+  top:15px;
+  right:20px;
+  font-size:22px;
+  font-weight:bold;
+  background:#fff;
+  padding:8px 12px;
+  border:2px solid #000;
+  border-radius:8px;
+}
+
+#ball {
+  width:180px;
+  height:180px;
+  cursor:pointer;
+  position:relative;
+}
+
+#ball img {
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  transition:transform 0.1s, box-shadow 0.3s;
+}
+
+#ball:active img {
+  transform:scale(0.9);
+}
+
+.info {
+  margin-top:10px;
+  color:white;
+  font-weight:bold;
+  text-shadow:1px 1px 2px black;
+}
+
+#ownedUpgrades {
+  margin-top:6px;
+  font-size:16px;
+}
+
+.points-popup {
+  position:absolute;
+  font-size:24px;
+  font-weight:bold;
+  color:yellow;
+  text-shadow:2px 2px 3px black;
+  animation:rise 1s forwards;
+  pointer-events:none;
+}
+
+@keyframes rise {
+  from { opacity:1; transform:translateY(0); }
+  to { opacity:0; transform:translateY(-60px); }
+}
+
+/* 🔥 תפריט סודי */
+#secretPanel {
+  position:fixed;
+  top:0;
+  right:-400px;
+  width:250px;
+  height:100%;
+  background:#222;
+  color:white;
+  padding:15px;
+  transition:0.3s;
+  z-index:999;
+}
+
+#secretPanel.open {
+  right:0;
+}
+
+#secretPanel input {
+  width:100%;
+  margin-top:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="shop">
+<h3>🛒 חנות</h3>
+
+<div class="item">
+  <b>Michael Jordan</b>
+  <img src="michael.png" class="player-img">
+  <br>+1 נקודה כל 40 שניות  
+  <br>מחיר: <span id="price1">50</span>
+  <button onclick="buyUpgrade(1)">קנה</button>
+</div>
+
+<div class="item">
+  <b>Kobe Bryant</b>
+  <img src="kobe.png" class="player-img">
+  <br>+2 נקודות כל 30 שניות  
+  <br>מחיר: <span id="price2">150</span>
+  <button onclick="buyUpgrade(2)">קנה</button>
+</div>
+
+<div class="item">
+  <b>Shaquille O'Neal</b>
+  <img src="שאקיל.png" class="player-img">
+  <br>+3 נקודות כל 20 שניות  
+  <br>מחיר: <span id="price3">350</span>
+  <button onclick="buyUpgrade(3)">קנה</button>
+</div>
+
+<div class="item">
+  <div class="lebron-line">
+    <b>LeBron James</b>
+    <img src="לברון.png">
+  </div>
+  +5 נקודות כל 10 שניות  
+  <br>מחיר: <span id="price4">650</span>
+  <button onclick="buyUpgrade(4)">קנה</button>
+</div>
+
+</div>
+
+<div id="game">
+  <div id="counter">נקודות: 0</div>
+
+  <div id="ball">
+    <img id="ballImage" src="https://upload.wikimedia.org/wikipedia/commons/7/7a/Basketball.png">
+  </div>
+
+  <div class="info" id="pointsPerSecond">נקודות לשנייה: 0</div>
+  <div class="info" id="ownedUpgrades">שחקנים שנקנו:<br>—</div>
+</div>
+
+<!-- 🔥 תפריט סודי -->
+<div id="secretPanel">
+  <h3>⚙️ הגדרות סודיות</h3>
+  נקודות לכל קליק:
+  <input type="number" id="clickValueInput" value="1">
+  <button onclick="updateClickValue()">שמור</button>
+</div>
+
+<script>
+let points = 0;
+let ballChanged = false;
+let clickValue = 1;
+
+const counter = document.getElementById("counter");
+const ball = document.getElementById("ball");
+const ballImg = document.getElementById("ballImage");
+const ppsText = document.getElementById("pointsPerSecond");
+const ownedBox = document.getElementById("ownedUpgrades");
+
+const upgrades = {
+  1:{ name:"Michael Jordan", gain:1, time:40000, price:50, count:0 },
+  2:{ name:"Kobe Bryant", gain:2, time:30000, price:150, count:0 },
+  3:{ name:"Shaquille O'Neal", gain:3, time:20000, price:350, count:0 },
+  4:{ name:"LeBron James", gain:5, time:10000, price:650, count:0 }
+};
+
+function updateClickValue() {
+  const val = parseInt(document.getElementById("clickValueInput").value);
+  if (!isNaN(val) && val > 0) {
+    clickValue = val;
+  }
+}
+
+function checkBallChange() {
+  if (points >= 5000 && !ballChanged) {
+    ballImg.src = "purple basketball.png";
+    ballImg.style.boxShadow = "0 0 40px purple";
+    ballChanged = true;
+  }
+}
+
+function updateCounter() {
+  counter.textContent = "נקודות: " + points;
+  checkBallChange();
+}
+
+function showPlus(amount) {
+  const pop = document.createElement("div");
+  pop.className = "points-popup";
+  pop.textContent = "+" + amount;
+  pop.style.left = "60px";
+  pop.style.top = "60px";
+  ball.appendChild(pop);
+  setTimeout(()=>pop.remove(),1000);
+}
+
+function updatePPS() {
+  let total = 0;
+  for (let id in upgrades) {
+    const u = upgrades[id];
+    total += (u.gain * u.count) / (u.time / 1000);
+  }
+  ppsText.textContent = "נקודות לשנייה: " + total.toFixed(2);
+}
+
+function updateOwned() {
+  let text = "שחקנים שנקנו:<br>";
+  let any = false;
+  for (let id in upgrades) {
+    if (upgrades[id].count > 0) {
+      text += upgrades[id].name + " × " + upgrades[id].count + "<br>";
+      any = true;
+    }
+  }
+  if (!any) text += "—";
+  ownedBox.innerHTML = text;
+}
+
+ball.addEventListener("click", () => {
+  points += clickValue;
+  updateCounter();
+  showPlus(clickValue);
+});
+
+function buyUpgrade(id) {
+  const u = upgrades[id];
+  if (points < u.price) return;
+
+  points -= u.price;
+  u.count++;
+  u.price = Math.floor(u.price * 1.5);
+
+  document.getElementById("price"+id).textContent = u.price;
+
+  updateCounter();
+  updatePPS();
+  updateOwned();
+
+  setInterval(() => {
+    points += u.gain;
+    updateCounter();
+    showPlus(u.gain);
+  }, u.time);
+}
+
+let keys = {};
+
+document.addEventListener("keydown", (e) => {
+  keys[e.key] = true;
+
+  if (keys["6"] && keys["7"]) {
+    document.getElementById("secretPanel").classList.toggle("open");
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  keys[e.key] = false;
+});
+
+updatePPS();
+updateOwned();
+</script>
+
+</body>
+</html>
